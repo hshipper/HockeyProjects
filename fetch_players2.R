@@ -26,6 +26,16 @@ get_year <- function(urlSuffix){
   c(urlSuffix, year)
 }
 
+applyfunction <- function(urlpairs){
+  db <- readHTMLTable(urlpairs$url, stringsAsFactors = FALSE)
+  reg <- db$stats_basic_nhl
+  reg$Season <- gsub("(.{2})(.{3})(.{2})", "\\1\\3", reg$Season)
+  reg$Season <- as.numeric(reg$Season)
+  reg$G <- as.numeric(reg$G)
+  goals <- which(reg$G >= 1)
+  year <- reg$Season[min(goals)]
+  c(urlpairs$urlSuffix, year)
+}
 
 
 
