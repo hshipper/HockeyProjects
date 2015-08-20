@@ -17,7 +17,7 @@ The following packages are necessary:
 ```{r, eval = FALSE}
 packages <- c("plyr", "dplyr", "XML", "RCurl")
 install.packages(packages)
-lapply(packages, library)
+lapply(packages, require, character.only = TRUE)
 ```
 
 ### Scraping player name tables
@@ -38,30 +38,26 @@ Unfortunately, since throughout hockey history some players have had the exact s
 
 ```{r, eval = TRUE}
 fetch_players <- function(letter){
-  if(!exists("player_tables")) player_tables <- list()
+  player_tables <- list()
   url <- paste0("http://www.hockey-reference.com/players/", letter, "/skaters.html")
   text <- getURI(url)
   player_tables[[letter]] <- readHTMLTable(text)$skaters
-  matches <- gregexpr(paste0("/players/", letter, "/[a-z]{5,7}[0-9]{2}.html"), text)
+  matches <- gregexpr(paste0("/players/[a-z]/[a-z]{5,7}[0-9]{2}.html"), text)
   ids <- regmatches(text, matches)
-  player_tables[["a"]][["id"]] <- ids[[1]]
-  player_tables
+  player_tables[[letter]][["id"]] <- ids[[1]]
+  player_tables[[letter]]
 }
 ```
 
-Then we run `fetch_players()` for every letter except "X". This will take a while, but we can speed it up by using parallel processing. 
-```{r, eval = TRUE}
+Since this can take a long time, it is useful to use parallelization. Two potential ways to return the list of player tables are provided. One uses `lapply()`, the other uses `mclapply()` from **parallel**. It is important to note the warning in the documentation from **parallel**: 
+> It is *strongly discouraged* to use these functions in GUI or embedded environments, because it leads to several processes sharing the same GUI which will likely cause chaos (and possibly crashes). Child processes should never use on-screen graphics devices.  
 
+#### Using `lapply()`
+```{r, eval = FALSE}
+all_player_tables <- lapply(letters[-24], fetch_players)
 ```
 
-```{r}
-summary(cars)
+#### Using `mclapply()`
+```{r, eval = FALSE}
+all_player_tables <- mclapply(letters[-24], fetch_players)
 ```
-
-You can also embed plots, for example:
-
-```{r, echo=FALSE}
-plot(cars)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

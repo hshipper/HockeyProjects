@@ -9,7 +9,7 @@ library(lattice) ###for plots
 fetch_players <- function(letter) { ###gets literally all player hashes in database
   url <- paste0("http://www.hockey-reference.com/players/", letter, "/skaters.html")
   txt <- getURI(url) ###gets source code of site
-  matches <- gregexpr(paste0("/players/", letter, "/[a-z]{5,7}[0-9]{2}.html"), txt) ###finds /players/abcdefg01.html
+  matches <- gregexpr(paste0("/players/", "[a-z]/[a-z]{5,7}[0-9]{2}.html"), txt) ###finds /players/abcdefg01.html
   ids <- regmatches(txt, matches) ###shows all matches
   ids <- as.data.frame(ids) ###dataframe cooperates with ldply, allows sorting by letter
   ids$letter <- letter ###adds column to sort by letter
