@@ -1,0 +1,67 @@
+---
+title: "HockeyScraping"
+author: "Henry Shipper"
+date: "August 19, 2015"
+output: html_document
+---
+
+This document is meant to demonstrate the process of scraping [Hockey-Reference.com](http://www.hockey-reference.com) to create tables of players using the **XML** and **RCurl** packages. These tables will later be used (and code from this document will be reused) in performing analysis on data from other tables taken from this website. 
+
+### Installing and loading packages
+The following packages are necessary:  
+* plyr
+* dplyr
+* XML
+* RCurl
+
+```{r, eval = FALSE}
+packages <- c("plyr", "dplyr", "XML", "RCurl")
+install.packages(packages)
+lapply(packages, library)
+```
+
+### Scraping player name tables
+[Hockey-Reference.com](http://www.hockey-refence.com) lists all players ever to play in the NHL on pages determined by the first letter of their last name. As a result, we will need to download tables for each letter. A quick look at the "players" landing page shows us that there are no players whose last name starts with the letter "X".  
+The **XML** package provides a convenient way to get these tables. We need only give it the url of the page containing the table we want. Since we will want to get tables from multiple pages, it is useful to create a function for this.
+
+```{r, eval = FALSE}
+fetch_players <- function(letter){
+  if(!exists("player_tables")) player_tables <- list()
+  url <- paste0("http://www.hockey-reference.com", letter, "/skaters.html")
+  player_tables[[letter]] <- readHTMLTable(url)$skaters
+  player_tables
+}
+```
+
+Unfortunately, since throughout hockey history some players have had the exact same name, name alone is not sufficient to identify these players in other tables. The solution to this is that each player is assigned a unique identifier code that is hyperlinked from their name on the page. Since this is not contained in the table, we need to take another pass at the HTML source and pull the identifiers and then attach them to the tables. To avoid making two passes of the site's source, we can store the text source using `getURI()` from **RCurl**, then pass that along to `readHTMLTable()` instead of using the url again. 
+
+
+```{r, eval = TRUE}
+fetch_players <- function(letter){
+  if(!exists("player_tables")) player_tables <- list()
+  url <- paste0("http://www.hockey-reference.com/players/", letter, "/skaters.html")
+  text <- getURI(url)
+  player_tables[[letter]] <- readHTMLTable(text)$skaters
+  matches <- gregexpr(paste0("/players/", letter, "/[a-z]{5,7}[0-9]{2}.html"), text)
+  ids <- regmatches(text, matches)
+  player_tables[["a"]][["id"]] <- ids[[1]]
+  player_tables
+}
+```
+
+Then we run `fetch_players()` for every letter except "X". This will take a while, but we can speed it up by using parallel processing. 
+```{r, eval = TRUE}
+
+```
+
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

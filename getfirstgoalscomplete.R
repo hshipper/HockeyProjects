@@ -9,7 +9,7 @@ library(lattice) ###for plots
 fetch_players <- function(letter) { ###gets literally all player hashes in database
   url <- paste0("http://www.hockey-reference.com/players/", letter, "/skaters.html")
   txt <- getURI(url) ###gets source code of site
-  matches <- gregexpr(paste0("/players/", letter, "/[a-z]{7}[0-9]{2}.html"), txt) ###finds /players/abcdefg01.html
+  matches <- gregexpr(paste0("/players/", letter, "/[a-z]{5,7}[0-9]{2}.html"), txt) ###finds /players/abcdefg01.html
   ids <- regmatches(txt, matches) ###shows all matches
   ids <- as.data.frame(ids) ###dataframe cooperates with ldply, allows sorting by letter
   ids$letter <- letter ###adds column to sort by letter
@@ -25,20 +25,20 @@ j = 3 ###for iteration
 newt <- as.vector(newt) ###changes from dataframe to vector? might be unneccessary
 
 for(i in letters[c(-1,-24)]){ ###ids starting with a already in vector, none start with x
-  newt <- c(newt, as.vector(test[test$letter == i, j])) 
+  newt <- c(newt, as.vector(test[test$letter == i, j]))
   j <- j+1
 }
 
 #####this section passes players who entered the league after expansion, scored a goal, and the year they scored
-check_player <- function(player_id){ 
+check_player <- function(player_id){
   player_id <- gsub("(.*)(.html)", "\\1", player_id) ###allows format from vector to be usable
   url <- paste0("http://www.hockey-reference.com", player_id, ".html")
-  db <- readHTMLTable(url, stringsAsFactors = FALSE) 
+  db <- readHTMLTable(url, stringsAsFactors = FALSE)
   reg <- db$stats_basic_nhl ###for easier calls to regular season stats
   reg$Season <- gsub("(.{2})(.{3})(.{2})", "\\1\\3", reg$Season) ###changes 2008-09 to 2009. needed for getting gamelogs
   reg$Season <- as.numeric(reg$Season)
   if(reg$Season[1] >= 2001){ ###removes players who entered before expansion
-    reg$G <- as.numeric(reg$G) 
+    reg$G <- as.numeric(reg$G)
     goals <- which(reg$G >= 1)
     if(length(goals) != 0){ ###removes players who didn't score any goals
       yr <- reg$Season[min(goals)]
@@ -58,7 +58,7 @@ grab_games <- function(row){
   url <- paste0("http://www.hockey-reference.com", player_id, "/gamelog/", yr, "/")
   games <- readHTMLTable(url, stringsAsFactors = FALSE)
   reg <- games$stats[, -1]
-  names(reg) <- c("Games", "Age", "Date", "Team", "Road", "Opp", "Result", "Goals", "Assists", "Points", "Plus-Minus", "PIM", "EVG", "PPG", "SHG", "GWG", "EVA", "PPA", "SHA", "Shots", "Shot%", "Shifts", "TOI") 
+  names(reg) <- c("Games", "Age", "Date", "Team", "Road", "Opp", "Result", "Goals", "Assists", "Points", "Plus-Minus", "PIM", "EVG", "PPG", "SHG", "GWG", "EVA", "PPA", "SHA", "Shots", "Shot%", "Shifts", "TOI")
   reg$Goals <- as.numeric(reg$Goals)
   reg <- reg[!is.na(reg$Goals), ]
   reg[min(which(reg$Goals >= 1)), ]
