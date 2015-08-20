@@ -8,15 +8,17 @@ output: html_document
 This document is meant to demonstrate the process of scraping [Hockey-Reference.com](http://www.hockey-reference.com) to create tables of players using the **XML** and **RCurl** packages. These tables will later be used (and code from this document will be reused) in performing analysis on data from other tables taken from this website. 
 
 ### Installing and loading packages
-The following packages are necessary:  
+The following packages are necessary:
+
 * plyr
+* dplyr
 * XML
 * RCurl
 
 **parallel** is optional, but will make running the code faster.
 
 ```{r, warning = FALSE, message = FALSE, results = 'hide', cache = TRUE}
-packages <- c("plyr", "XML", "RCurl", "parallel")
+packages <- c("plyr", "dplyr","XML", "RCurl", "parallel")
 lapply(packages, require, character.only = TRUE)
 ```
 
@@ -67,10 +69,75 @@ all_player_tables <- mclapply(letters[-24], fetch_players)
 
 ##### Difference in speed
 ```{r, cache = TRUE}
-mcl <- function() mclapply(letters[-24], fetch_players)
 lap <- function() lapply(letters[-24], fetch_players)
-system.time(mcl())
 system.time(lap())
+mcl <- function() mclapply(letters[-24], fetch_players)
+system.time(mcl())
 ```
 
 ### Storing the tables
+Since the process of downloading and scraping these tables is cumbersome, we can easily store them using `write.csv()`. Then we can read them back in later at any point with `read.csv()`. It is also possible to merge them together before writing to tables. The if we had used the `ldply()` function, we could have created a data frame from the tables in an earlier step. I chose to not do so.
+```{r, cache = TRUE, results = 'hide'}
+names(all_player_tables) <- letters[-24]
+lapply(letters[-24], function(x) write.csv(all_player_tables[[x]], 
+                                           row.names = FALSE, 
+                                           file = paste0("player_table_", x, ".csv")))
+```
+
+### Finding first Career Goals
+The reason I started working on this project was to answer a question: has my team surrendered an unusually large number of goals to players that had never scored before?  
+
+The simplest way to obtain this information is to compile all of the first career goals scored. We will have to navigate through two pages per player that has scored to find theirs: 
+
+1. Their cumulative statistics for each season
+2. The gamelog from the season in which they scored their first goal
+
+The first step we will want to take is to filter out players that never scored a goal. In the interest of keeping this relevant to today's NHL set up, we will also filter out any players who entered the league before its most recent expansion in 2000.[^1]
+
+[^1]: [Wikipedia: History of Organizational Changes in the NHL](https://en.wikipedia.org/wiki/History_of_organizational_changes_in_the_NHL)
+
+```{r, cache = TRUE, results = 'hide'}
+relevant_player_table <- 
+  full_player_table %>%
+    filter(G > 0, From >= 2001)
+```
+
+Next we can create a function to return each player's game in which they scored their first goal, following the instructions laid out above. Application is as simple as your choice of `lapply()` or `mclapply()` over `relevant_player_table$id` A few notes about the code:
+
+* Just as in the code just above this, dplyr was used to clean the data.
+* In order to get **dplyr** to cooperate, duplicate column names had to be resolved.
+* Some players have a table above the regular season career stats table. Hence the `determine_df()` function.
+
+```{r, cache = TRUE, results = 'hide', warning = FALSE}
+getfirstgoal <- function(id){
+  first_goal_list <- list()
+  seasons_url <- paste0("http://www.hockey-reference.com", id)
+  seasons_list <- readHTMLTable(seasons_url, stringsAsFactors = FALSE)
+  seasons_df <- determine_df(seasons_list)
+  names(seasons_df)[15:17] <- c("EVA", "PPA", "SHA")
+  goal_seasons <-
+    seasons_df %>%
+      mutate(Season = as.numeric(gsub("(.{5})(.{2})", "20\\2", Season))) %>%
+      mutate(G = as.numeric(G)) %>%
+      filter(G >= 1)
+  first_season <- goal_seasons[[1,1]]
+  log_id <- gsub("(.*)(.html)", "\\1", id)
+  log_url <- paste0("http://www.hockey-reference.com", log_id, "/gamelog/", first_season)
+  gamelog <- readHTMLTable(log_url, stringsAsFactors = FALSE)$gamelog
+  names(gamelog)[c(2, 6, 8, 18:20)] <- c("Games", "At", "W-L", "EVA", "PPA", "SHA")
+  goal_games <-
+    gamelog %>%
+      mutate(G = as.numeric(G)) %>%
+      filter(G >= 1)
+  first_goal_game <- goal_games[1,]
+  first_goal_game[["id"]] <- id
+  first_goal_list[[id]] <- first_goal_game
+  first_goal_list[[id]]
+}
+
+determine_df <- function(list){
+  if (names(list)[1] != "NULL") list[[1]] else list[[2]]
+}
+
+```
+
