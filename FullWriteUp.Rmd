@@ -10,13 +10,13 @@ This document is meant to demonstrate the process of scraping [Hockey-Reference.
 ### Installing and loading packages
 The following packages are necessary:  
 * plyr
-* dplyr
 * XML
 * RCurl
 
-```{r, eval = FALSE}
-packages <- c("plyr", "dplyr", "XML", "RCurl")
-install.packages(packages)
+**parallel** is optional, but will make running the code faster.
+
+```{r, warning = FALSE, message = FALSE, results = 'hide', cache = TRUE}
+packages <- c("plyr", "XML", "RCurl", "parallel")
 lapply(packages, require, character.only = TRUE)
 ```
 
@@ -24,7 +24,7 @@ lapply(packages, require, character.only = TRUE)
 [Hockey-Reference.com](http://www.hockey-refence.com) lists all players ever to play in the NHL on pages determined by the first letter of their last name. As a result, we will need to download tables for each letter. A quick look at the "players" landing page shows us that there are no players whose last name starts with the letter "X".  
 The **XML** package provides a convenient way to get these tables. We need only give it the url of the page containing the table we want. Since we will want to get tables from multiple pages, it is useful to create a function for this.
 
-```{r, eval = FALSE}
+```{r}
 fetch_players <- function(letter){
   if(!exists("player_tables")) player_tables <- list()
   url <- paste0("http://www.hockey-reference.com", letter, "/skaters.html")
@@ -36,7 +36,7 @@ fetch_players <- function(letter){
 Unfortunately, since throughout hockey history some players have had the exact same name, name alone is not sufficient to identify these players in other tables. The solution to this is that each player is assigned a unique identifier code that is hyperlinked from their name on the page. Since this is not contained in the table, we need to take another pass at the HTML source and pull the identifiers and then attach them to the tables. To avoid making two passes of the site's source, we can store the text source using `getURI()` from **RCurl**, then pass that along to `readHTMLTable()` instead of using the url again. 
 
 
-```{r, eval = TRUE}
+```{r}
 fetch_players <- function(letter){
   player_tables <- list()
   url <- paste0("http://www.hockey-reference.com/players/", letter, "/skaters.html")
@@ -50,7 +50,10 @@ fetch_players <- function(letter){
 ```
 
 Since this can take a long time, it is useful to use parallelization. Two potential ways to return the list of player tables are provided. One uses `lapply()`, the other uses `mclapply()` from **parallel**. It is important to note the warning in the documentation from **parallel**: 
+
 > It is *strongly discouraged* to use these functions in GUI or embedded environments, because it leads to several processes sharing the same GUI which will likely cause chaos (and possibly crashes). Child processes should never use on-screen graphics devices.  
+
+Since this function does not produce any text, I felt safe using it in RStudio and did not encounter any issues. 
 
 #### Using `lapply()`
 ```{r, eval = FALSE}
@@ -58,6 +61,16 @@ all_player_tables <- lapply(letters[-24], fetch_players)
 ```
 
 #### Using `mclapply()`
-```{r, eval = FALSE}
+```{r, cache = TRUE}
 all_player_tables <- mclapply(letters[-24], fetch_players)
 ```
+
+##### Difference in speed
+```{r, cache = TRUE}
+mcl <- function() mclapply(letters[-24], fetch_players)
+lap <- function() lapply(letters[-24], fetch_players)
+system.time(mcl())
+system.time(lap())
+```
+
+### Storing the tables
