@@ -2,7 +2,7 @@
 
 ## Update
 
-This project is no longer in the works, as it turns out that crawling sports-reference pages is agains their TOS and will result in IP bans. As a result I can't recommend that anybody try to actually use this.
+This project is no longer in the works, as it turns out that crawling sports-reference pages is against their TOS and will result in IP bans. As a result I can't recommend that anybody try to actually use this.
 
 ##Find first career goals for/against
 
