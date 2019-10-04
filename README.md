@@ -4,7 +4,7 @@
 
 This project is no longer in the works, as it turns out that crawling sports-reference pages is against their TOS and will result in IP bans. As a result I can't recommend that anybody try to actually use this.
 
-##Find first career goals for/against
+## Find first career goals for/against
 
 This repository contains five (so far) scripts. When sourced in combination (getfirstgoals.R must be sourced last),   
 a dataframe will be produced that contains each player that scored their first career goal in the seasons since 2009. This is being generated as an R Studio project, hence the .Rproj file and packrat directory.
